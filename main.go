@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	filename := "./data/adjustableSubmitBlockPayloadCapella_Goerli.ssz"
+	filename := "./data/adjustableSubmitBlockPayloadDeneb.ssz"
 
 	sszBytes, err := ioutil.ReadFile(filename)
 	if err != nil {

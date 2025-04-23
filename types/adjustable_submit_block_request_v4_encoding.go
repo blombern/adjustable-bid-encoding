@@ -7,18 +7,19 @@ import (
 	d "github.com/attestantio/go-builder-client/api/deneb"
 	v1 "github.com/attestantio/go-builder-client/api/v1"
 	deneb "github.com/attestantio/go-eth2-client/spec/deneb"
+	electra "github.com/attestantio/go-eth2-client/spec/electra"
 	ssz "github.com/ferranbt/fastssz"
 )
 
-// MarshalSSZ ssz marshals the AdjustableSubmitBlockRequest object
-func (a *AdjustableSubmitBlockRequest) MarshalSSZ() ([]byte, error) {
+// MarshalSSZ ssz marshals the AdjustableSubmitBlockRequestV4 object
+func (a *AdjustableSubmitBlockRequestV4) MarshalSSZ() ([]byte, error) {
 	return ssz.MarshalSSZ(a)
 }
 
-// MarshalSSZTo ssz marshals the AdjustableSubmitBlockRequest object to a target array
-func (a *AdjustableSubmitBlockRequest) MarshalSSZTo(buf []byte) (dst []byte, err error) {
+// MarshalSSZTo ssz marshals the AdjustableSubmitBlockRequestV4 object to a target array
+func (a *AdjustableSubmitBlockRequestV4) MarshalSSZTo(buf []byte) (dst []byte, err error) {
 	dst = buf
-	offset := int(344)
+	offset := int(348)
 
 	// Field (0) 'Message'
 	if a.Message == nil {
@@ -42,10 +43,17 @@ func (a *AdjustableSubmitBlockRequest) MarshalSSZTo(buf []byte) (dst []byte, err
 	}
 	offset += a.BlobsBundle.SizeSSZ()
 
-	// Field (3) 'Signature'
+	// Offset (3) 'ExecutionRequests'
+	dst = ssz.WriteOffset(dst, offset)
+	if a.ExecutionRequests == nil {
+		a.ExecutionRequests = new(electra.ExecutionRequests)
+	}
+	offset += a.ExecutionRequests.SizeSSZ()
+
+	// Field (4) 'Signature'
 	dst = append(dst, a.Signature[:]...)
 
-	// Offset (4) 'AdjustmentData'
+	// Offset (5) 'AdjustmentData'
 	dst = ssz.WriteOffset(dst, offset)
 	if a.AdjustmentData == nil {
 		a.AdjustmentData = new(AdjustmentData)
@@ -62,7 +70,12 @@ func (a *AdjustableSubmitBlockRequest) MarshalSSZTo(buf []byte) (dst []byte, err
 		return
 	}
 
-	// Field (4) 'AdjustmentData'
+	// Field (3) 'ExecutionRequests'
+	if dst, err = a.ExecutionRequests.MarshalSSZTo(dst); err != nil {
+		return
+	}
+
+	// Field (5) 'AdjustmentData'
 	if dst, err = a.AdjustmentData.MarshalSSZTo(dst); err != nil {
 		return
 	}
@@ -70,16 +83,16 @@ func (a *AdjustableSubmitBlockRequest) MarshalSSZTo(buf []byte) (dst []byte, err
 	return
 }
 
-// UnmarshalSSZ ssz unmarshals the AdjustableSubmitBlockRequest object
-func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
+// UnmarshalSSZ ssz unmarshals the AdjustableSubmitBlockRequestV4 object
+func (a *AdjustableSubmitBlockRequestV4) UnmarshalSSZ(buf []byte) error {
 	var err error
 	size := uint64(len(buf))
-	if size < 344 {
+	if size < 348 {
 		return ssz.ErrSize
 	}
 
 	tail := buf
-	var o1, o2, o4 uint64
+	var o1, o2, o3, o5 uint64
 
 	// Field (0) 'Message'
 	if a.Message == nil {
@@ -94,7 +107,7 @@ func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
 		return ssz.ErrOffset
 	}
 
-	if o1 < 344 {
+	if o1 < 348 {
 		return ssz.ErrInvalidVariableOffset
 	}
 
@@ -103,11 +116,16 @@ func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
 		return ssz.ErrOffset
 	}
 
-	// Field (3) 'Signature'
-	copy(a.Signature[:], buf[244:340])
+	// Offset (3) 'ExecutionRequests'
+	if o3 = ssz.ReadOffset(buf[244:248]); o3 > size || o2 > o3 {
+		return ssz.ErrOffset
+	}
 
-	// Offset (4) 'AdjustmentData'
-	if o4 = ssz.ReadOffset(buf[340:344]); o4 > size || o2 > o4 {
+	// Field (4) 'Signature'
+	copy(a.Signature[:], buf[248:344])
+
+	// Offset (5) 'AdjustmentData'
+	if o5 = ssz.ReadOffset(buf[344:348]); o5 > size || o3 > o5 {
 		return ssz.ErrOffset
 	}
 
@@ -124,7 +142,7 @@ func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
 
 	// Field (2) 'BlobsBundle'
 	{
-		buf = tail[o2:o4]
+		buf = tail[o2:o3]
 		if a.BlobsBundle == nil {
 			a.BlobsBundle = new(d.BlobsBundle)
 		}
@@ -133,9 +151,20 @@ func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
 		}
 	}
 
-	// Field (4) 'AdjustmentData'
+	// Field (3) 'ExecutionRequests'
 	{
-		buf = tail[o4:]
+		buf = tail[o3:o5]
+		if a.ExecutionRequests == nil {
+			a.ExecutionRequests = new(electra.ExecutionRequests)
+		}
+		if err = a.ExecutionRequests.UnmarshalSSZ(buf); err != nil {
+			return err
+		}
+	}
+
+	// Field (5) 'AdjustmentData'
+	{
+		buf = tail[o5:]
 		if a.AdjustmentData == nil {
 			a.AdjustmentData = new(AdjustmentData)
 		}
@@ -146,9 +175,9 @@ func (a *AdjustableSubmitBlockRequest) UnmarshalSSZ(buf []byte) error {
 	return err
 }
 
-// SizeSSZ returns the ssz encoded size in bytes for the AdjustableSubmitBlockRequest object
-func (a *AdjustableSubmitBlockRequest) SizeSSZ() (size int) {
-	size = 344
+// SizeSSZ returns the ssz encoded size in bytes for the AdjustableSubmitBlockRequestV4 object
+func (a *AdjustableSubmitBlockRequestV4) SizeSSZ() (size int) {
+	size = 348
 
 	// Field (1) 'ExecutionPayload'
 	if a.ExecutionPayload == nil {
@@ -162,7 +191,13 @@ func (a *AdjustableSubmitBlockRequest) SizeSSZ() (size int) {
 	}
 	size += a.BlobsBundle.SizeSSZ()
 
-	// Field (4) 'AdjustmentData'
+	// Field (3) 'ExecutionRequests'
+	if a.ExecutionRequests == nil {
+		a.ExecutionRequests = new(electra.ExecutionRequests)
+	}
+	size += a.ExecutionRequests.SizeSSZ()
+
+	// Field (5) 'AdjustmentData'
 	if a.AdjustmentData == nil {
 		a.AdjustmentData = new(AdjustmentData)
 	}
@@ -171,13 +206,13 @@ func (a *AdjustableSubmitBlockRequest) SizeSSZ() (size int) {
 	return
 }
 
-// HashTreeRoot ssz hashes the AdjustableSubmitBlockRequest object
-func (a *AdjustableSubmitBlockRequest) HashTreeRoot() ([32]byte, error) {
+// HashTreeRoot ssz hashes the AdjustableSubmitBlockRequestV4 object
+func (a *AdjustableSubmitBlockRequestV4) HashTreeRoot() ([32]byte, error) {
 	return ssz.HashWithDefaultHasher(a)
 }
 
-// HashTreeRootWith ssz hashes the AdjustableSubmitBlockRequest object with a hasher
-func (a *AdjustableSubmitBlockRequest) HashTreeRootWith(hh ssz.HashWalker) (err error) {
+// HashTreeRootWith ssz hashes the AdjustableSubmitBlockRequestV4 object with a hasher
+func (a *AdjustableSubmitBlockRequestV4) HashTreeRootWith(hh ssz.HashWalker) (err error) {
 	indx := hh.Index()
 
 	// Field (0) 'Message'
@@ -204,10 +239,18 @@ func (a *AdjustableSubmitBlockRequest) HashTreeRootWith(hh ssz.HashWalker) (err 
 		return
 	}
 
-	// Field (3) 'Signature'
+	// Field (3) 'ExecutionRequests'
+	if a.ExecutionRequests == nil {
+		a.ExecutionRequests = new(electra.ExecutionRequests)
+	}
+	if err = a.ExecutionRequests.HashTreeRootWith(hh); err != nil {
+		return
+	}
+
+	// Field (4) 'Signature'
 	hh.PutBytes(a.Signature[:])
 
-	// Field (4) 'AdjustmentData'
+	// Field (5) 'AdjustmentData'
 	if a.AdjustmentData == nil {
 		a.AdjustmentData = new(AdjustmentData)
 	}
@@ -219,7 +262,7 @@ func (a *AdjustableSubmitBlockRequest) HashTreeRootWith(hh ssz.HashWalker) (err 
 	return
 }
 
-// GetTree ssz hashes the AdjustableSubmitBlockRequest object
-func (a *AdjustableSubmitBlockRequest) GetTree() (*ssz.Node, error) {
+// GetTree ssz hashes the AdjustableSubmitBlockRequestV4 object
+func (a *AdjustableSubmitBlockRequestV4) GetTree() (*ssz.Node, error) {
 	return ssz.ProofTree(a)
 }
